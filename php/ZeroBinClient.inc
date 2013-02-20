@@ -2,7 +2,7 @@
 
 class ZeroBinClient
 {
-  private var $paste_url = NULL;
+  private $paste_url = NULL;
 
   /**
    * Initializes ZeroBinClient
@@ -80,9 +80,9 @@ class ZeroBinClient
    * @param string message
    * @return encrypted string data
    */
-  function zeroCipher(key, message) {
+  function zeroCipher($key, $message) {
     // from js: return sjcl.encrypt(key,compress(message));
-    throw new Exception("ZeroBinClient::zeroCipher has not been implemented.")
+    throw new Exception("ZeroBinClient::zeroCipher has not been implemented.");
   }
 
   /**
@@ -92,9 +92,9 @@ class ZeroBinClient
    *  @param encrypted string data
    *  @return string readable message
    */
-  function zeroDecipher(key, data) {
+  function zeroDecipher($key, $data) {
     // js: return decompress(sjcl.decrypt(key,data));
-    throw new Exception("ZeroBinClient::zeroDecipher has not been implemented.")
+    throw new Exception("ZeroBinClient::zeroDecipher has not been implemented.");
   }
 
   /**
