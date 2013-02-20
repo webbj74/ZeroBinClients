@@ -8,8 +8,8 @@ class ZeroBinClient
    * Initializes ZeroBinClient
    *
    * Examples:
-   * $encrypter = new ZeroBinClient(array('config' => 'http://zerobin.local:8082/'));
-   * $decrypter = new ZeroBinClient(array('config' => 'http://zerobin.local:8082/?64c376879a41461d#BbGvGM7bFvNv2OqDndnDj42faDL3nx78Q7deadbeefA='));
+   * $encrypter = new ZeroBinClient(array('paste_url' => 'http://zerobin.local:8082/'));
+   * $decrypter = new ZeroBinClient(array('paste_url' => 'http://zerobin.local:8082/?64c376879a41461d#BbGvGM7bFvNv2OqDndnDj42faDL3nx78Q7deadbeefA='));
    * $message = ZeroBinClient::decompress(ZeroBinClient::compress($message));
    */
   public function __construct($config) {
