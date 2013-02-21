@@ -117,24 +117,6 @@ class ZeroBinClient
 
 $unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
 
-/**
- * Set text of a DOM element (required for IE)
- * This is equivalent to element.text(text)
- * @param object element : a DOM element.
- * @param string text : the text to enter.
- */
-function setElementText(element, text) {
-    // For IE<10.
-    if ($('div#oldienotice').is(":visible")) {
-        // IE<10 do not support white-space:pre-wrap; so we have to do this BIG UGLY STINKING THING.
-        element.text(text.replace(/\n/ig,'{BIG_UGLY_STINKING_THING__OH_GOD_I_HATE_IE}'));
-        element.html(element.text().replace(/{BIG_UGLY_STINKING_THING__OH_GOD_I_HATE_IE}/ig,"\r\n<br>"));
-    }
-    // for other (sane) browsers:
-    else {
-        element.text(text);
-    }
-}
 
 /**
  * Show decrypted text in the display area, including discussion (if open)
