@@ -194,37 +194,6 @@ class ZeroBinClient
 $unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
 
 /**
- * Open the comment entry when clicking the "Reply" button of a comment.
- * @param object source : element which emitted the event.
- * @param string commentid = identifier of the comment we want to reply to.
- */
-function open_reply(source, commentid) {
-    $('div.reply').remove(); // Remove any other reply area.
-    source.parent().after('<div class="span12">'
-                + '<div class="reply">'
-                + '<div id="replystatus" class="alert" style="display:none;">&nbsp;</div>'
-                + '<form class="form-horizontal well"><fieldset>'
-                + '<div class="control-group">'
-                + '<input type="text" placeholder="Your Name" class="input-block-level" id="nickname" name="nickname"/>'
-                + '</div>'
-                + '<div class="control-group">'
-                + '<textarea id="replymessage" placeholder="Comment" class="replymessage input-block-level" rows="5"></textarea>'
-                + '</div>'
-                + '<div class="control-group">'
-                + '<button class="btn btn-primary" id="replybutton" onclick="send_comment(\'' + commentid + '\');return false;">Post comment</button>'
-                + '</div>'
-                + '</div>'
-                + '</fieldset></form></div>');
-    $('input#nickname').focus(function() {
-        $(this).css('color', '#000');
-        if ($(this).val() == $(this).attr('title')) {
-            $(this).val('');
-        }
-    });
-    $('textarea#replymessage').focus();
-}
-
-/**
  * Send a reply in a discussion.
  * @param string parentid : the comment identifier we want to send a reply to.
  */
