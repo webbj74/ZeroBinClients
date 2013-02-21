@@ -134,7 +134,7 @@ class ZeroBinClient
 
     // Display paste expiration.
     if (!empty($comments[0]['meta']['expire_date'])) {
-      $result['cleartext']['remainingtime'] = 'This document will expire in ' . secondsToHuman($comments[0]['meta']['remaining_time']) . '.'
+      $result['cleartext']['remainingtime'] = 'This document will expire in ' . secondsToHuman($comments[0]['meta']['remaining_time']) . '.';
     }
     if (!empty($comments[0]['meta']['burnafterreading'])) {
       $result['cleartext']['remainingtime'] = 'FOR YOUR EYES ONLY. Don\'t close this window, this message will self destruct.';
@@ -237,52 +237,86 @@ class ZeroBinClient
  */
   }
 
+
+  public static function randomBase64Str($length = 44) {
+    $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+    $randomString = '';
+    for ($i = 1; $i < $length; $i++) {
+        $randomString .= $characters[rand(0, strlen($characters) - 1)];
+    }
+    return ($randomString . '=');
+  }
+
+  /**
+   * HTTP Post Function
+   */ 
+  function post($data) {
+    $form_parts = array();
+    foreach ($data as $key => $value) {
+      $form_parts[]= urlencode($key) . '=' . urlencode($value);
+    }
+    $postfields = implode('&',$form_parts);
+    
+    $ch = curl_init($this->scriptLocation());
+    curl_setopt($ch, CURLOPT_POST, 1);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $postfields);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION ,1);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $response = curl_exec($ch);
+    
+    $return_value = NULL;
+    $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($response_code == 200) {
+      $return_value = json_decode($response);
+    }
+    else {
+      throw new Exception("ZeroBinClient::post received HTTP Error Code {$response_code}");
+    }
+    return $return_value;
+  }
+
+  /**
+   *  Send a new paste to server
+   */
+  function send_data($messageValue, $pasteExpiration = '3days', $language = 'sh', $opendiscussion = 0) {
+    // Do not send if no data.
+    if (empty($messageValue)) {
+      return;
+    }
+
+    $randomkey = $this->randomBase64Str(44);
+
+    $cipherdata = ''; $this->zeroCipher($randomkey, $messageValue);
+
+    $data_to_send = array(
+      'data' => $cipherdata,
+      'expire' => $pasteExpiration,
+      'language' => $language,
+      'opendiscussion' => $opendiscussion,
+    );
+    
+    try {
+      if ($data = $this->post($data_to_send)) {
+        if ($data->status == 0) {
+          echo $this->scriptLocation() . "?" . $data->id . '#' . $randomkey;
+        }
+        else {
+          error_log('Error: Could not create paste - ' . $data->message);
+        }
+      }
+      else {
+        error_log('Error: Could not create paste.');
+      }
+    }
+    catch (Exception $err) {
+      error_log('Error: Data could not be sent.' . $err->getMessage());
+      return;
+    }
+  }
 }
 
 $unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
-
-/**
- *  Send a new paste to server
- */
-function send_data() {
-    // Do not send if no data.
-    if ($('textarea#messageValue').val().length == 0) {
-        return;
-    }
-
-    showStatus('Sending paste...', spin=true);
-
-    var randomkey = sjcl.codec.base64.fromBits(sjcl.random.randomWords(8, 0), 0);
-    var cipherdata = zeroCipher(randomkey, $('textarea#messageValue').val());
-    var data_to_send = { data:           cipherdata,
-                         expire:         $('select#pasteExpiration').val(),
-                         language:       $('select#language').val(),
-                         opendiscussion: $('input#opendiscussion').is(':checked') ? 1 : 0
-                       };
-
-    $.post(scriptLocation(), data_to_send, 'json')
-        .error(function() {
-            showError('Error: Data could not be sent.');
-        })
-        .success(function(data) {
-            if (data.status == 0) {
-                stateExistingPaste();
-                var url = scriptLocation() + "?" + data.id + '#' + randomkey;
-                showStatus('');
-                $('div#pastelink').html('Paste url: <a href="' + url + '">' + url + '</a>').show();
-                setElementText($('pre#cleartext'), $('textarea#messageValue').val());
-                urls2links($('pre#cleartext'));
-                $('pre#cleartext').snippet($('select#language').val(), {style:"ide-codewarrior"});
-                showStatus('');
-            }
-            else if (data.status==1) {
-                showError('Error: Could not create paste - '+data.message);
-            }
-            else {
-                showError('Error: Could not create paste.');
-            }
-        });
-}
 
 /**
  * Put the screen in "New paste" mode.
