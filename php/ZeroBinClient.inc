@@ -189,20 +189,20 @@ class ZeroBinClient
  */
     return $result;
   }
-}
 
-$unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
-
-/**
- * Send a reply in a discussion.
- * @param string parentid : the comment identifier we want to send a reply to.
- */
-function send_comment(parentid) {
+  /**
+   * Send a reply in a discussion.
+   * @param string parentid : the comment identifier we want to send a reply to.
+   */
+  function send_comment($parentid, $replymessage) {
     // Do not send if no data.
-    if ($('textarea#replymessage').val().length==0) {
+    if (empty($replymessage)) {
         return;
     }
-
+    throw new Exception("ZeroBinClient::send_comment has not been implemented.");
+/**
+ * TODO: Convert Comment Adding Code to PHP
+ *
     showStatus('Sending comment...', spin=true);
     var cipherdata = zeroCipher(pageKey(), $('textarea#replymessage').val());
     var ciphernickname = '';
@@ -232,7 +232,14 @@ function send_comment(parentid) {
                 showError('Error: Could not post comment.');
             }
         });
-    }
+ *
+ * END of Comment Adding Code
+ */
+  }
+
+}
+
+$unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
 
 /**
  *  Send a new paste to server
