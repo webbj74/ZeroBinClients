@@ -113,85 +113,85 @@ class ZeroBinClient
     return $this->paste_url['query'];
   }
 
+  /**
+   * Return the decrypted text, including discussion (if open)
+   *
+   * @param string key : decryption key
+   * @param array comments : Array of messages to display (items = array with keys ('data','meta')
+   */
+  function displayMessages($key, $comments) {
+    try { // Try to decrypt the paste.
+      $cleartext = zeroDecipher($key, $comments[0]['data']);
+    } catch(Exception $err) {
+      error_log('Error: Could not decrypt data.' . $err->getMessage());
+      return;
+    }
+    $result = array();
+    $result['cleartext'] = array(
+      'data' => $cleartext,
+      'language' => $comments[0]['meta']['language'],
+     );
+
+    // Display paste expiration.
+    if (!empty($comments[0]['meta']['expire_date'])) {
+      $result['cleartext']['remainingtime'] = 'This document will expire in ' . secondsToHuman($comments[0]['meta']['remaining_time']) . '.'
+    }
+    if (!empty($comments[0]['meta']['burnafterreading'])) {
+      $result['cleartext']['remainingtime'] = 'FOR YOUR EYES ONLY. Don\'t close this window, this message will self destruct.';
+    }
+/**
+ * TODO: Convert Discussion Processing Code to PHP
+ *
+    // If the discussion is opened on this paste, display it.
+    if (comments[0].meta.opendiscussion) {
+      $('div#comments').html('');
+      // For each comment.
+      for (var i = 1; i < comments.length; i++) {
+        var comment=comments[i];
+        var cleartext="[Could not decrypt comment ; Wrong key ?]";
+        try {
+          cleartext = zeroDecipher(key, comment.data);
+        } catch(err) { }
+        var place = $('div#comments');
+        // If parent comment exists, display below (CSS will automatically shift it right.)
+        var cname = 'div#comment_'+comment.meta.parentid
+  
+        // If the element exists in page
+        if ($(cname).length) {
+          place = $(cname);
+        }
+        var divComment = $('<div class="row"><div class="span12"><div class="comment" id="comment_' + comment.meta.commentid+'">'
+                           + '<div class="commentmeta"><strong class="nickname"></strong><span class="commentdate muted"></span></div><div class="commentdata"></div>'
+                           + '</div></div></div>');
+        setElementText(divComment.find('div.commentdata'), cleartext);
+        // Convert URLs to clickable links in comment.
+        urls2links(divComment.find('div.commentdata'));
+        divComment.find('strong.nickname').html('<i>(Anonymous)</i>');
+  
+        // Try to get optional nickname:
+        try {
+          divComment.find('strong.nickname').text(zeroDecipher(key, comment.meta.nickname));
+        } catch(err) { }
+        divComment.find('span.commentdate').text(' - '+(new Date(comment.meta.postdate*1000).toUTCString())+' ').attr('title','CommentID: ' + comment.meta.commentid);
+  
+        // If an avatar is available, display it.
+        if (comment.meta.vizhash) {
+          divComment.find('strong.nickname').before('<img src="' + comment.meta.vizhash + '" class="vizhash" title="Anonymous avatar (Vizhash of the IP address)" />');
+        }
+  
+        place.append(divComment);
+      }
+      $('div#comments').append('<div class="comment"><div class="row"><div class="span12"><button class="btn" onclick="open_reply($(this),\'' + pasteID() + '\');return false;">Add comment</button></div></div></div>');
+      $('div#discussion').show();
+    }
+ *
+ * END of Discussion Processing Code
+ */
+    return $result;
+  }
 }
 
 $unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
-
-
-/**
- * Show decrypted text in the display area, including discussion (if open)
- *
- * @param string key : decryption key
- * @param array comments : Array of messages to display (items = array with keys ('data','meta')
- */
-function displayMessages(key, comments) {
-    try { // Try to decrypt the paste.
-        var cleartext = zeroDecipher(key, comments[0].data);
-    } catch(err) {
-        $('pre#cleartext').hide();
-        showError('Error: Could not decrypt data.');
-        return;
-    }
-    setElementText($('pre#cleartext'), cleartext);
-    urls2links($('pre#cleartext')); // Convert URLs to clickable links.
-    $('pre#cleartext').snippet(comments[0].meta.language, {style:"ide-codewarrior"});
-
-    // Display paste expiration.
-    if (comments[0].meta.expire_date) {
-        $('div#remainingtime')
-            .html('<i class="icon-time"></i> This document will expire in '+secondsToHuman(comments[0].meta.remaining_time)+'.')
-            .show();
-    }
-    if (comments[0].meta.burnafterreading) {
-        $('div#remainingtime')
-            .addClass('alert-error')
-            .html('<i class="icon-fire"></i> <strong>FOR YOUR EYES ONLY.</strong> Don\'t close this window, this message will self destruct.')
-            .show();
-    }
-
-    // If the discussion is opened on this paste, display it.
-    if (comments[0].meta.opendiscussion) {
-        $('div#comments').html('');
-        // For each comment.
-        for (var i = 1; i < comments.length; i++) {
-            var comment=comments[i];
-            var cleartext="[Could not decrypt comment ; Wrong key ?]";
-            try {
-                cleartext = zeroDecipher(key, comment.data);
-            } catch(err) { }
-            var place = $('div#comments');
-            // If parent comment exists, display below (CSS will automatically shift it right.)
-            var cname = 'div#comment_'+comment.meta.parentid
-
-            // If the element exists in page
-            if ($(cname).length) {
-                place = $(cname);
-            }
-            var divComment = $('<div class="row"><div class="span12"><div class="comment" id="comment_' + comment.meta.commentid+'">'
-                               + '<div class="commentmeta"><strong class="nickname"></strong><span class="commentdate muted"></span></div><div class="commentdata"></div>'
-                               + '</div></div></div>');
-            setElementText(divComment.find('div.commentdata'), cleartext);
-            // Convert URLs to clickable links in comment.
-            urls2links(divComment.find('div.commentdata'));
-            divComment.find('strong.nickname').html('<i>(Anonymous)</i>');
-
-            // Try to get optional nickname:
-            try {
-                divComment.find('strong.nickname').text(zeroDecipher(key, comment.meta.nickname));
-            } catch(err) { }
-            divComment.find('span.commentdate').text(' - '+(new Date(comment.meta.postdate*1000).toUTCString())+' ').attr('title','CommentID: ' + comment.meta.commentid);
-
-            // If an avatar is available, display it.
-            if (comment.meta.vizhash) {
-                divComment.find('strong.nickname').before('<img src="' + comment.meta.vizhash + '" class="vizhash" title="Anonymous avatar (Vizhash of the IP address)" />');
-            }
-
-            place.append(divComment);
-        }
-        $('div#comments').append('<div class="comment"><div class="row"><div class="span12"><button class="btn" onclick="open_reply($(this),\'' + pasteID() + '\');return false;">Add comment</button></div></div></div>');
-        $('div#discussion').show();
-    }
-}
 
 /**
  * Open the comment entry when clicking the "Reply" button of a comment.
