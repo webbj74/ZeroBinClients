@@ -1,4 +1,5 @@
 <?php
+include 'ZeroBinSJCL.inc';
 
 class ZeroBinClient
 {
@@ -16,6 +17,11 @@ class ZeroBinClient
     if (!empty($config['paste_url'])) {
       $this->paste_url = parse_url($config['paste_url']);
       $this->paste_url['url'] = $config['paste_url'];
+    }
+    if ($this->pasteID() && $this->pageKey()) {
+      if ($messages = $this->get()) {
+        $this->displayMessages($this->pageKey(), $messages);
+      }
     }
   }
 
@@ -46,7 +52,7 @@ class ZeroBinClient
     $v=floor($seconds/(60*60*24*30)); 
     return $v . ' month' . (($v>1)?'s':'');
   }
-
+  
   /**
    * Compress a message (deflate compression). Returns base64 encoded data.
    *
@@ -80,9 +86,8 @@ class ZeroBinClient
    * @param string message
    * @return encrypted string data
    */
-  function zeroCipher($key, $message) {
-    // from js: return sjcl.encrypt(key,compress(message));
-    throw new Exception("ZeroBinClient::zeroCipher has not been implemented.");
+  public static function zeroCipher($key, $message) {
+    return ZeroBinSJCL::encrypt($key,self::compress($message));
   }
 
   /**
@@ -92,9 +97,8 @@ class ZeroBinClient
    *  @param encrypted string data
    *  @return string readable message
    */
-  function zeroDecipher($key, $data) {
-    // js: return decompress(sjcl.decrypt(key,data));
-    throw new Exception("ZeroBinClient::zeroDecipher has not been implemented.");
+  public static function zeroDecipher($key, $data) {
+    return self::decompress(ZeroBinSJCL::decrypt($key, $data));
   }
 
   /**
@@ -110,8 +114,16 @@ class ZeroBinClient
    *   eg. 'c05354954c49a487'
    */
   public function pasteID() {
-    return $this->paste_url['query'];
+    return (!empty($this->paste_url['query'])) ? $this->paste_url['query'] : NULL;
   }
+
+  /**
+   * Return the deciphering key stored in anchor part of the URL
+   */
+  function pageKey() {
+    return (!empty($this->paste_url['fragment'])) ? preg_replace('/=.*$/', '=', $this->paste_url['fragment']) : NULL;
+  }
+  
 
   /**
    * Return the decrypted text, including discussion (if open)
@@ -120,10 +132,12 @@ class ZeroBinClient
    * @param array comments : Array of messages to display (items = array with keys ('data','meta')
    */
   function displayMessages($key, $comments) {
-    try { // Try to decrypt the paste.
-      $cleartext = zeroDecipher($key, $comments[0]['data']);
-    } catch(Exception $err) {
-      error_log('Error: Could not decrypt data.' . $err->getMessage());
+    try { 
+      // Try to decrypt the paste.
+      $cleartext = $this->zeroDecipher($key, $comments[0]->data);
+    }
+    catch (Exception $err) {
+      error_log('Error: Could not decrypt data: ' . $err->getMessage());
       return;
     }
     $result = array();
@@ -237,18 +251,30 @@ class ZeroBinClient
  */
   }
 
-
-  public static function randomBase64Str($length = 44) {
-    $characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-    $randomString = '';
-    for ($i = 1; $i < $length; $i++) {
-        $randomString .= $characters[rand(0, strlen($characters) - 1)];
+  /**
+   * Retrieves SJCL-encrypted data from a JSON object embedded in the provided ZeroBin URL
+   */ 
+  function get() {
+    $ch = curl_init($this->paste_url['url']);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION ,1);
+    curl_setopt($ch, CURLOPT_HEADER, 0);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    $response = curl_exec($ch);
+    $return_value = NULL;
+    $response_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if ($response_code == 200) {
+      if (preg_match('#<div id="cipherdata" style="display:none;">(.*)</div>#', $response, $matches)) {
+        $return_value = json_decode(html_entity_decode($matches[1]));
+      }
     }
-    return ($randomString . '=');
+    else {
+      throw new Exception("ZeroBinClient::post received HTTP Error Code {$response_code}");
+    }
+    return $return_value;
   }
 
   /**
-   * HTTP Post Function
+   * Posts a JSON object with SJCL-compatible encrypted data to ZeroBin
    */ 
   function post($data) {
     $form_parts = array();
@@ -275,7 +301,7 @@ class ZeroBinClient
     }
     return $return_value;
   }
-
+  
   /**
    *  Send a new paste to server
    */
@@ -317,125 +343,6 @@ class ZeroBinClient
 }
 
 $unimplemented_javascript =<<<TO_ADD_TO_ZEROBINCLIENT
-
-/**
- * Put the screen in "New paste" mode.
- */
-function stateNewPaste() {
-    $('button#sendbutton').show();
-    $('div#expiration').show();
-    $('div#remainingtime').hide();
-    $('div#language').show();
-    $('input#password').hide(); //$('#password').show();
-    $('div#opendisc').show();
-    $('button#newbutton').show();
-    $('div#pastelink').hide();
-    $('textarea#messageValue').text('');
-    $('textarea#message').show();
-    $('div#cleartext').hide();
-    $('textarea#messageValue').focus();
-    $('div#discussion').hide();
-}
-
-/**
- * Put the screen in "Existing paste" mode.
- */
-function stateExistingPaste() {
-    $('#message').hide();
-    $('#toolbar').hide();
-    $('pre#cleartext').show();
-}
-
-/**
- * Create a new paste.
- */
-function newPaste() {
-    stateNewPaste();
-    showStatus('');
-    $('textarea#messageValue').text('');
-}
-
-/**
- * Display an error message
- * (We use the same function for paste and reply to comments)
- */
-function showError(message) {
-    $('div#status').addClass('alert-error').text(message);
-    $('div#replystatus').addClass('alert-error').text(message);
-    $('div#status').show();
-    $('div#replystatus').show();
-}
-
-/**
- * Display status
- * (We use the same function for paste and reply to comments)
- *
- * @param string message : text to display
- * @param boolean spin (optional) : tell if the "spinning" animation should be displayed.
- */
-function showStatus(message, spin) {
-    $('div#replystatus').removeClass('alert-error');
-    $('div#replystatus').text(message);
-    $('div#status').removeClass('alert-error');
-    $('div#status').text(message);
-
-    if (!message || message == '') {
-        $('div#status').html('&nbsp');
-        $('div#status').hide();
-        $('div#replystatus').html('&nbsp');
-        $('div#replystatus').hide();
-        return;
-    }
-
-    $('div#status').show();
-
-    if (spin) {
-        var img = '<img src="img/busy.gif" style="width:16px;height:9px;margin:0px 4px 0px 0px;" />';
-        $('div#status').prepend(img);
-        $('div#replystatus').prepend(img);
-    }
-}
-
-/**
- * Convert URLs to clickable links.
- * URLs to handle:
- * <code>
- *     magnet:?xt.1=urn:sha1:YNCKHTQCWBTRNJIV4WNAE52SJUQCZO5C&xt.2=urn:sha1:TXGCZQTH26NL6OUQAJJPFALHG2LTGBC7
- *     http://localhost:8800/zero/?6f09182b8ea51997#WtLEUO5Epj9UHAV9JFs+6pUQZp13TuspAUjnF+iM+dM=
- *     http://user:password@localhost:8800/zero/?6f09182b8ea51997#WtLEUO5Epj9UHAV9JFs+6pUQZp13TuspAUjnF+iM+dM=
- * </code>
- *
- * @param object element : a jQuery DOM element.
- * @FIXME: add ppa & apt links.
- */
-function urls2links(element) {
-    var re = /((http|https|ftp):\/\/[\w?=&.\/-;#@~%+-]+(?![\w\s?&.\/;#~%"=-]*>))/ig;
-    element.html(element.html().replace(re,'<a href="$1" rel="nofollow">$1</a>'));
-    var re = /((magnet):[\w?=&.\/-;#@~%+-]+)/ig;
-    element.html(element.html().replace(re,'<a href="$1">$1</a>'));
-}
-
-/**
- * Return the deciphering key stored in anchor part of the URL
- */
-function pageKey() {
-    var key = window.location.hash.substring(1);  // Get key
-
-    // Some stupid web 2.0 services and redirectors add data AFTER the anchor
-    // (such as &utm_source=...).
-    // We will strip any additional data.
-
-    // First, strip everything after the equal sign (=) which signals end of base64 string.
-    i = key.indexOf('='); if (i>-1) { key = key.substring(0,i+1); }
-
-    // If the equal sign was not present, some parameters may remain:
-    i = key.indexOf('&'); if (i>-1) { key = key.substring(0,i); }
-
-    // Then add trailing equal sign if it's missing
-    if (key.charAt(key.length-1)!=='=') key+='=';
-
-    return key;
-}
 
 $(function() {
     $('select#pasteExpiration').change(function() {
